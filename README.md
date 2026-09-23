@@ -1,0 +1,2 @@
+# ThucHanhAnNinhThongTin_2387700072_NguyenMinhTrung
+2387700072_NguyenMinhTrung
