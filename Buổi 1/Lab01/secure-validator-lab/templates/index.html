@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SecureValidator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@1.*/css/pico.min.css">
+  <style>
+    body {margin:auto; max-width:720px;}
+    h1 {text-align:center; margin-bottom:2rem;}
+    .result-line {font-size:0.9rem; margin: -0.5rem 0 1rem; color:#333;}
+    .valid {color:green;}
+    .invalid {color:red;}
+    code {background:#f3f3f3; padding:0.2rem 0.4rem;
+      border-radius:0.3rem; font-size:0.95em;}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>SecureValidator</h1>
+    <form method="POST">
+      <label>Email:
+        <input type="text" name="email" placeholder="you@example.com"
+               value="{{ request.form.get('email', '') }}">
+        {% if results is not none %}
+        <div class="result-line {{ 'valid' if results.email else 'invalid' }}">
+          {{ "Email hợp lệ" if results.email else "Email không hợp lệ" }}
+        </div>
+        {% endif %}
+      </label>
+
+      <label>URL:
+        <input type="text" name="url" placeholder="https://example.com"
+               value="{{ request.form.get('url', '') }}">
+        {% if results is not none %}
+        <div class="result-line {{ 'valid' if results.url else 'invalid' }}">
+          {{ "URL hợp lệ" if results.url else "URL không hợp lệ" }}
+        </div>
+        {% endif %}
+      </label>
+
+      <label>Filename:
+        <input type="text" name="filename" placeholder="file.txt"
+               value="{{ request.form.get('filename', '') }}">
+        {% if results is not none %}
+        <div class="result-line {{ 'valid' if results.filename else 'invalid' }}">
+          {{ "Tên file hợp lệ" if results.filename else "Tên file không hợp lệ" }}
+        </div>
+        {% endif %}
+      </label>
+
+      <label>SQL Input:
+        <input type="text" name="sql" placeholder="input SQL..."
+               value="{{ request.form.get('sql', '') }}">
+        {% if results is not none %}
+        <div class="result-line"><strong>Đã lọc:</strong>
+          <code>{{ results.sql }}</code></div>
+        {% endif %}
+      </label>
+
+      <label>HTML Input:
+        <input type="text" name="html" placeholder='&lt;script&gt;alert(1)&lt;/script&gt;'
+               value="{{ request.form.get('html', '') }}">
+        {% if results is not none %}
+        <div class="result-line"><strong>Đã mã hóa:</strong>
+          <code>{{ results.html }}</code></div>
+        {% endif %}
+      </label>
+
+      <button type="submit">Xác thực ngay</button>
+    </form>
+  </main>
+</body>
+</html>
