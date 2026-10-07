@@ -181,6 +181,7 @@ class TestPeer:
         ca_file: Path,
         certificate_file: Path,
         key_file: Path,
+        announced_public_key: bytes | None = None,
     ) -> "TestPeer":
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=str(ca_file))
         context.minimum_version = ssl.TLSVersion.TLSv1_2
@@ -193,9 +194,12 @@ class TestPeer:
         private_key = serialization.load_pem_private_key(key_file.read_bytes(), password=None)
         assert isinstance(private_key, rsa.RSAPrivateKey)
         ephemeral_key = x25519.X25519PrivateKey.generate()
-        public_key = ephemeral_key.public_key().public_bytes(
+        generated_public_key = ephemeral_key.public_key().public_bytes(
             serialization.Encoding.Raw, serialization.PublicFormat.Raw
         )
+        public_key = announced_public_key if announced_public_key is not None else generated_public_key
+        if len(public_key) != 32:
+            raise ValueError("announced X25519 public keys must contain 32 bytes")
         announcement = create_key_announcement(
             username,
             room,

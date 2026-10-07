@@ -225,13 +225,21 @@ class SecureChatServer:
                 ):
                     active_peers.append((peer_session, peer_announcement))
 
-            welcomed_generations = {peer.get("public_key") for peer in existing_peers}
-            active_generations = {peer.get("public_key") for _, peer in active_peers}
+            welcomed_generations = {
+                (peer.get("username"), peer.get("public_key")) for peer in existing_peers
+            }
+            active_generations = {
+                (peer.get("username"), peer.get("public_key")) for _, peer in active_peers
+            }
             stale_welcome_peers = [
-                peer for peer in existing_peers if peer.get("public_key") not in active_generations
+                peer
+                for peer in existing_peers
+                if (peer.get("username"), peer.get("public_key")) not in active_generations
             ]
             newly_ready_peers = [
-                peer for _, peer in active_peers if peer.get("public_key") not in welcomed_generations
+                peer
+                for _, peer in active_peers
+                if (peer.get("username"), peer.get("public_key")) not in welcomed_generations
             ]
 
         for peer in stale_welcome_peers:
@@ -296,7 +304,11 @@ class SecureChatServer:
             return True
 
         recipient_session = self._connections.get(recipient)
-        if recipient_session is None or recipient_session.room != session.room:
+        if (
+            recipient_session is None
+            or not recipient_session.ready
+            or recipient_session.room != session.room
+        ):
             self._send_error(session, "recipient_unavailable")
             return True
         delivered = {

@@ -4,6 +4,7 @@ import base64
 import json
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -263,6 +264,21 @@ class SecureChatServerIntegrationTests(unittest.TestCase):
         self.assertTrue(welcome_blocked.wait(timeout=3))
         try:
             bob = self.connect_peer("bob", "general")
+            bob.send(
+                {
+                    "type": "chat",
+                    "sender": "bob",
+                    "room": "general",
+                    "recipient": "alice",
+                    "envelope": encrypt_message(
+                        bytes(32),
+                        "pending welcome probe",
+                        room="general",
+                        sender="bob",
+                        recipient="alice",
+                    ),
+                }
+            )
         finally:
             release_welcome.set()
         alice_thread.join(timeout=3)
@@ -275,8 +291,81 @@ class SecureChatServerIntegrationTests(unittest.TestCase):
         self.assertEqual(alice.welcome.get("type"), "welcome")
         self.assertTrue(send_types)
         self.assertEqual(send_types[0], "welcome")
+        pending_chat_error = bob.receive_type("error", timeout=1)
+        self.assertEqual(pending_chat_error.get("code"), "recipient_unavailable")
         self.assertEqual(alice.receive_type("peer_joined").get("peer", {}).get("username"), "bob")
         self.assertEqual(bob.receive_type("peer_joined").get("peer", {}).get("username"), "alice")
+
+    def test_pending_peer_reconciliation_matches_username_and_public_key(self):
+        alice = self.connect_peer("alice", "general")
+        shared_public_key = alice.public_key
+        welcome_blocked = threading.Event()
+        release_welcome = threading.Event()
+        original_send = self.server._connections.send
+
+        def controlled_send(session, payload):
+            if session.username == "carol" and payload.get("type") == "welcome":
+                welcome_blocked.set()
+                if not release_welcome.wait(timeout=3):
+                    raise TimeoutError("test did not release Carol's welcome")
+            original_send(session, payload)
+
+        self.server._connections.send = controlled_send
+        carol_results: list[TestPeer] = []
+        carol_errors: list[BaseException] = []
+
+        def connect_carol():
+            try:
+                certificate, key = self.credentials.clients["carol"]
+                carol_results.append(
+                    TestPeer.connect(
+                        username="carol",
+                        host="127.0.0.1",
+                        port=self.port,
+                        room="general",
+                        ca_file=self.credentials.ca_certificate,
+                        certificate_file=certificate,
+                        key_file=key,
+                    )
+                )
+            except BaseException as exc:
+                carol_errors.append(exc)
+
+        carol_thread = threading.Thread(target=connect_carol)
+        carol_thread.start()
+        self.assertTrue(welcome_blocked.wait(timeout=3))
+        try:
+            alice.close()
+            deadline = time.monotonic() + 3
+            while self.server._connections.get("alice") is not None and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertIsNone(self.server._connections.get("alice"))
+
+            bob_certificate, bob_key = self.credentials.clients["bob"]
+            bob = TestPeer.connect(
+                username="bob",
+                host="127.0.0.1",
+                port=self.port,
+                room="general",
+                ca_file=self.credentials.ca_certificate,
+                certificate_file=bob_certificate,
+                key_file=bob_key,
+                announced_public_key=shared_public_key,
+            )
+            self.peers.append(bob)
+        finally:
+            release_welcome.set()
+        carol_thread.join(timeout=3)
+
+        self.assertFalse(carol_thread.is_alive())
+        self.assertEqual(carol_errors, [])
+        self.assertEqual(len(carol_results), 1)
+        carol = carol_results[0]
+        self.peers.append(carol)
+        stale_peer = carol.receive_type("peer_left")
+        new_peer = carol.receive_type("peer_joined")
+        self.assertEqual(stale_peer.get("username"), "alice")
+        self.assertEqual(new_peer.get("peer", {}).get("username"), "bob")
 
     def test_failed_active_send_and_delayed_cleanup_preserve_reconnected_session(self):
         alice = self.connect_peer("alice", "general")
