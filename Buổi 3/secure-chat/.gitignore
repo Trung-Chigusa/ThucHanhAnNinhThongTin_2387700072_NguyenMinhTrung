@@ -1,0 +1,8 @@
+certs/
+*.key
+*.pem
+*.csr
+*.srl
+*.log
+__pycache__/
+*.py[cod]
