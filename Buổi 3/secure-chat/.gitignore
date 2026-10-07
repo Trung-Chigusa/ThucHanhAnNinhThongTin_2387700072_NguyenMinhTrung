@@ -1,4 +1,5 @@
 certs/
+.venv/
 *.key
 *.pem
 *.csr

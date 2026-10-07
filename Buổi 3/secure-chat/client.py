@@ -116,6 +116,12 @@ class SecureChatClient:
         for announcement in welcome["peers"]:
             self._add_peer(announcement)
         self.output_fn(f"Connected as {self.username} in room {self.room}.")
+        with self._peers_lock:
+            online_peers = sorted(self._peers)
+        if online_peers:
+            self.output_fn("Peers in this room: " + ", ".join(online_peers))
+        else:
+            self.output_fn("No other clients are in this room yet.")
         self.output_fn("Send a message with @username message; enter /help for commands.")
 
     def start_reader(self) -> None:

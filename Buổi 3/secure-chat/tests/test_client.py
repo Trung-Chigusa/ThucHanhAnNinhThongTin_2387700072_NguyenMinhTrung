@@ -53,6 +53,16 @@ class SecureChatClientIntegrationTests(unittest.TestCase):
         self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
         self.assertEqual(context.minimum_version, ssl.TLSVersion.TLSv1_2)
 
+        bob_cert, bob_key = self.credentials.clients["bob"]
+        bob = TestPeer.connect(
+            username="bob",
+            host="127.0.0.1",
+            port=self.port,
+            room="general",
+            ca_file=self.credentials.ca_certificate,
+            certificate_file=bob_cert,
+            key_file=bob_key,
+        )
         inputs: queue.Queue[str] = queue.Queue()
         outputs: list[str] = []
         client_errors: list[BaseException] = []
@@ -77,23 +87,17 @@ class SecureChatClientIntegrationTests(unittest.TestCase):
 
         alice_thread = threading.Thread(target=run_alice, daemon=True)
         alice_thread.start()
-        bob_cert, bob_key = self.credentials.clients["bob"]
-        bob = TestPeer.connect(
-            username="bob",
-            host="127.0.0.1",
-            port=self.port,
-            room="general",
-            ca_file=self.credentials.ca_certificate,
-            certificate_file=bob_cert,
-            key_file=bob_key,
-        )
         try:
-            self.assertEqual([peer["username"] for peer in bob.welcome.get("peers", [])], ["alice"])
             alice_identity = verify_key_announcement(
-                bob.welcome["peers"][0],
+                bob.receive_type("peer_joined")["peer"],
                 x509.load_pem_x509_certificate(self.credentials.ca_certificate.read_bytes()),
                 "general",
             )
+            self.assertEqual(alice_identity.username, "alice")
+            deadline = time.monotonic() + 2
+            while "Peers in this room: bob" not in outputs and time.monotonic() < deadline:
+                time.sleep(0.02)
+            self.assertIn("Peers in this room: bob", outputs)
             pairwise_key = derive_pairwise_key(
                 bob.private_key,
                 alice_identity.public_key,
