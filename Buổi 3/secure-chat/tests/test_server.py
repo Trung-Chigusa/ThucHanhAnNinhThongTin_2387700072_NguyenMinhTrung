@@ -224,6 +224,7 @@ class SecureChatServerIntegrationTests(unittest.TestCase):
     def test_welcome_is_the_first_frame_during_concurrent_joins(self):
         welcome_blocked = threading.Event()
         release_welcome = threading.Event()
+        pending_chat_rejected = threading.Event()
         send_types: list[str] = []
         send_types_lock = threading.Lock()
         original_send = self.server._connections.send
@@ -237,6 +238,12 @@ class SecureChatServerIntegrationTests(unittest.TestCase):
                 with send_types_lock:
                     send_types.append(str(payload.get("type")))
             original_send(session, payload)
+            if (
+                session.username == "bob"
+                and payload.get("type") == "error"
+                and payload.get("code") == "recipient_unavailable"
+            ):
+                pending_chat_rejected.set()
 
         self.server._connections.send = controlled_send
         alice_results: list[TestPeer] = []
@@ -279,6 +286,7 @@ class SecureChatServerIntegrationTests(unittest.TestCase):
                     ),
                 }
             )
+            self.assertTrue(pending_chat_rejected.wait(timeout=3))
         finally:
             release_welcome.set()
         alice_thread.join(timeout=3)
