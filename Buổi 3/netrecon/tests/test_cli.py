@@ -66,6 +66,18 @@ class CliTests(unittest.TestCase):
         self.assertEqual(len(files), 1)
         self.assertIn(str(files[0]), out)
 
+    def test_scan_reads_project_dotenv_file(self):
+        settings = load_settings()
+        with tempfile.TemporaryDirectory() as temp, patch("cli.configure_logging", return_value=Mock()), patch(
+            "cli.load_settings", return_value=settings
+        ) as loader, patch("cli.scan_ports", return_value=()), patch(
+            "cli.BASE_DIR", Path(temp)
+        ), patch("cli.REPORTS_DIR", Path(temp) / "reports"), patch(
+            "cli.write_report", return_value=Path(temp) / "reports" / "report.json"
+        ):
+            code, _out, _err = self.invoke(["scan", "--target", "127.0.0.1", "--ports", "80"])
+        self.assertEqual(code, 0)
+        loader.assert_called_once_with(env_file=Path(temp) / ".env")
     def test_neighbors_uses_cache_only(self):
         entries = (NeighborEntry("127.0.0.1", ip_address("127.0.0.2"), "aa-bb-cc-dd-ee-ff", "dynamic"),)
         with patch("cli.configure_logging", return_value=Mock()), patch(

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NetRecon · Private Lab</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">LAB 03 · LOCAL PRIVATE NETWORK</p>
+      <h1>NetRecon</h1>
+      <p class="intro">Kiểm tra một máy trong lab, theo phạm vi allowlist đã cấu hình.</p>
+    </header>
+
+    <section class="panel scope-panel" aria-labelledby="scope-heading">
+      <div>
+        <p class="eyebrow">PHẠM VI</p>
+        <h2 id="scope-heading">{{ scope_summary }}</h2>
+      </div>
+      <div class="limits" aria-label="Giới hạn quét">
+        <span>{{ rate_per_second }} probes/second</span>
+        <span>max {{ max_concurrency }} concurrent</span>
+        <span>timeout {{ timeout_seconds }}s</span>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="scan-heading">
+      <h2 id="scan-heading">Quét một host</h2>
+      {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+      <form method="post" action="{{ url_for('scan') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <label for="target">Địa chỉ IP trong allowlist</label>
+        <input id="target" name="target" type="text" inputmode="text" placeholder="127.0.0.1" required>
+
+        <label for="ports">Cổng</label>
+        <input id="ports" name="ports" type="text" value="{{ default_ports }}" required>
+        <small>Danh sách hoặc khoảng cổng; tối đa 128 cổng.</small>
+
+        <label for="protocol">Giao thức</label>
+        <select id="protocol" name="protocol">
+          <option value="tcp">TCP</option>
+          <option value="udp">UDP</option>
+          <option value="both">TCP và UDP</option>
+        </select>
+        <button type="submit">Chạy kiểm tra</button>
+      </form>
+      <p class="local-note">Giao diện chỉ dành cho máy này. Target phải là IP literal trong phạm vi lab.</p>
+    </section>
+
+    {% if report_id %}
+    <section class="panel results" aria-labelledby="results-heading">
+      <div class="result-heading">
+        <h2 id="results-heading">Kết quả</h2>
+        <a class="download" href="{{ url_for('download_report', report_id=report_id) }}">Tải JSON</a>
+      </div>
+      {% if results %}
+      <ul class="result-list">
+        {% for result in results %}
+        <li>
+          <span class="state state-{{ result.state|replace('|', '-') }}">{{ result.state }}</span>
+          <span>{{ result.protocol|upper }}/{{ result.port }}</span>
+          {% if result.service %}<span class="service">{{ result.service }}</span>{% endif %}
+          {% if result.notes %}<span class="notes">{{ result.notes|join(' ') }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p>Không có cổng được yêu cầu trong kết quả.</p>{% endif %}
+      <p class="local-note">UDP không nhận phản hồi được ghi là open|filtered. Banner tối đa 512 byte, không gửi payload.</p>
+    </section>
+    {% endif %}
+    <footer>Thông tin cổng là gợi ý cục bộ, không phải kết luận CVE hay đánh giá lỗ hổng.</footer>
+  </main>
+</body>
+</html>

@@ -33,6 +33,7 @@ class ScopeTests(unittest.TestCase):
             "localhost",
             "http://10.1.2.3",
             "10.1.0.0/24",
+            "::1%lo",
         )
 
         for target in invalid:

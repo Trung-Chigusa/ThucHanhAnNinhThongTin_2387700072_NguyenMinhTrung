@@ -83,7 +83,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     try:
-        settings = load_settings()
+        settings = load_settings(env_file=BASE_DIR / ".env")
         ports = parse_ports(args.ports)
         target = validate_target(args.target, settings)
         protocols = _protocols(args.protocol)
