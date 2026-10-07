@@ -49,7 +49,7 @@ Set-Location '.\Buổi 3\secure-chat'
 .\.venv\Scripts\python.exe .\client.py --host 127.0.0.1 --port 8443 --room general --cert .\certs\bob.pem --key .\certs\bob.key --ca .\certs\ca.pem
 ```
 
-Khi client báo đã kết nối, nhập lệnh sau tại cửa sổ Alice:
+Đợi cửa sổ Alice hiện thông báo Bob đã tham gia phòng, rồi nhập lệnh sau:
 
 ```text
 @bob Xin chào Bob, đây là tin nhắn thử nghiệm.
@@ -83,7 +83,7 @@ Server vẫn nhìn thấy username, phòng, thời điểm và kích thước g�
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Các kiểm thử bao gồm giới hạn frame, xác minh chứng thư/chữ ký, mã hóa và phát hiện sửa đổi, từ chối client không tin cậy, định tuyến riêng, cách ly phòng, và trao đổi thật qua TLS trên loopback.
+Các kiểm thử bao gồm giới hạn frame, xác minh chứng thư/chữ ký, mã hóa và phát hiện sửa đổi, từ chối client không tin cậy, định tuyến riêng, cách ly phòng, thứ tự thông điệp khi nhiều client kết nối đồng thời, và dọn session an toàn khi reconnect hoặc gửi thất bại.
 
 ## 5. Giới hạn và lưu ý
 

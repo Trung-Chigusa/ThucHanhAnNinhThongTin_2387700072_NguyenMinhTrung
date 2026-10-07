@@ -16,6 +16,7 @@ class ClientSession:
     socket: object
     certificate_der: bytes
     public_key: bytes
+    ready: bool = False
     send_lock: Lock = field(default_factory=Lock)
 
 
@@ -53,3 +54,10 @@ class ConnectionManager:
     def remove(self, username: str) -> ClientSession | None:
         with self._lock:
             return self._sessions.pop(username, None)
+
+    def remove_if_current(self, session: ClientSession) -> ClientSession | None:
+        """Remove a session only when it still owns its username."""
+        with self._lock:
+            if self._sessions.get(session.username) is not session:
+                return None
+            return self._sessions.pop(session.username)

@@ -128,6 +128,18 @@ class ConnectionManagerTests(unittest.TestCase):
         self.assertIsNone(manager.get("alice"))
         self.assertIsNone(manager.remove("alice"))
 
+    def test_remove_if_current_does_not_remove_a_replacement_session(self):
+        manager = ConnectionManager()
+        old_session = make_session()
+        manager.register(old_session)
+        self.assertIs(manager.remove_if_current(old_session), old_session)
+
+        new_session = make_session()
+        manager.register(new_session)
+
+        self.assertIsNone(manager.remove_if_current(old_session))
+        self.assertIs(manager.get("alice"), new_session)
+
 
 class RoomManagerTests(unittest.TestCase):
     def test_join_rejects_invalid_room_and_username(self):

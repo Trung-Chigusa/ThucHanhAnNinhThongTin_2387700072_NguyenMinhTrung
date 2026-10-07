@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import queue
 import ssl
 import tempfile
@@ -9,10 +10,18 @@ import unittest
 from pathlib import Path
 
 from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import x25519
 
-from client import create_client_tls_context, run_client
+from client import SecureChatClient, create_client_tls_context, run_client
 from helpers import TestPeer, create_test_credentials
-from securechat.crypto import decrypt_message, derive_pairwise_key, encrypt_message, verify_key_announcement
+from securechat.crypto import (
+    create_key_announcement,
+    decrypt_message,
+    derive_pairwise_key,
+    encrypt_message,
+    verify_key_announcement,
+)
 from server import SecureChatServer
 
 
@@ -148,6 +157,50 @@ class SecureChatClientIntegrationTests(unittest.TestCase):
             bob.close()
             inputs.put("exit")
             alice_thread.join(timeout=3)
+
+    def test_stale_peer_left_does_not_remove_a_reconnected_peer_generation(self):
+        local_certificate, local_key = self.credentials.clients["carol"]
+        client = SecureChatClient(
+            "127.0.0.1",
+            self.port,
+            "general",
+            str(local_certificate),
+            str(local_key),
+            str(self.credentials.ca_certificate),
+            output_fn=lambda _message: None,
+        )
+        alice_certificate_path, alice_key_path = self.credentials.clients["alice"]
+        alice_certificate = x509.load_pem_x509_certificate(alice_certificate_path.read_bytes())
+        alice_signing_key = serialization.load_pem_private_key(alice_key_path.read_bytes(), password=None)
+
+        def announcement_for_new_generation():
+            ephemeral_key = x25519.X25519PrivateKey.generate()
+            public_key = ephemeral_key.public_key().public_bytes(
+                serialization.Encoding.Raw, serialization.PublicFormat.Raw
+            )
+            announcement = create_key_announcement(
+                "alice",
+                "general",
+                alice_signing_key,
+                alice_certificate.public_bytes(serialization.Encoding.DER),
+                public_key,
+            )
+            return announcement, public_key
+
+        old_announcement, old_public_key = announcement_for_new_generation()
+        new_announcement, new_public_key = announcement_for_new_generation()
+        client._add_peer(old_announcement)
+        client._handle_server_message({"type": "peer_joined", "peer": new_announcement})
+        client._handle_server_message(
+            {
+                "type": "peer_left",
+                "username": "alice",
+                "public_key": base64.b64encode(old_public_key).decode("ascii"),
+            }
+        )
+        client._handle_server_message({"type": "peer_joined", "peer": old_announcement})
+
+        self.assertEqual(client._peers["alice"].public_key, new_public_key)
 
 
 if __name__ == "__main__":

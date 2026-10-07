@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import socket
 import ssl
 import threading
@@ -83,6 +85,7 @@ class SecureChatClient:
         self._decoder = FrameDecoder()
         self._pending: deque[dict[str, object]] = deque()
         self._peers: dict[str, PeerIdentity] = {}
+        self._departed_peer_generations: set[tuple[str, bytes]] = set()
         self._peers_lock = threading.RLock()
         self._send_lock = threading.Lock()
         self._stopped = threading.Event()
@@ -238,13 +241,27 @@ class SecureChatClient:
         message_type = message.get("type")
         if message_type == "peer_joined":
             peer = self._add_peer(message.get("peer"))
-            self.output_fn(f"{peer.username} joined room {self.room}.")
+            if peer is not None:
+                self.output_fn(f"{peer.username} joined room {self.room}.")
             return
         if message_type == "peer_left":
             username = message.get("username")
-            if isinstance(username, str):
-                with self._peers_lock:
+            encoded_public_key = message.get("public_key")
+            if not isinstance(username, str) or not isinstance(encoded_public_key, str):
+                return
+            try:
+                public_key = base64.b64decode(encoded_public_key, validate=True)
+            except (ValueError, binascii.Error):
+                return
+            if len(public_key) != 32:
+                return
+            with self._peers_lock:
+                self._departed_peer_generations.add((username, public_key))
+                peer = self._peers.get(username)
+                removed = peer is not None and peer.public_key == public_key
+                if removed:
                     self._peers.pop(username, None)
+            if removed:
                 self.output_fn(f"{username} left room {self.room}.")
             return
         if message_type == "chat":
@@ -256,13 +273,15 @@ class SecureChatClient:
                 self.output_fn(f"Server rejected the message ({code}).")
             return
 
-    def _add_peer(self, announcement: object) -> PeerIdentity:
+    def _add_peer(self, announcement: object) -> PeerIdentity | None:
         if not isinstance(announcement, dict):
             raise CryptoError("peer announcement is not an object")
         peer = verify_key_announcement(announcement, self.ca_certificate, self.room)
         if peer.username == self.username:
             raise CryptoError("server announced the local identity as another peer")
         with self._peers_lock:
+            if (peer.username, peer.public_key) in self._departed_peer_generations:
+                return None
             existing = self._peers.get(peer.username)
             if existing is not None and existing.certificate_der != peer.certificate_der:
                 raise CryptoError("peer identity changed during the session")

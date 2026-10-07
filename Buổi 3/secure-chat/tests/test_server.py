@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import tempfile
 import threading
@@ -218,6 +219,107 @@ class SecureChatServerIntegrationTests(unittest.TestCase):
         )
         self.peers.append(reconnected)
         self.assertEqual(reconnected.welcome["username"], "bob")
+
+    def test_welcome_is_the_first_frame_during_concurrent_joins(self):
+        welcome_blocked = threading.Event()
+        release_welcome = threading.Event()
+        send_types: list[str] = []
+        send_types_lock = threading.Lock()
+        original_send = self.server._connections.send
+
+        def controlled_send(session, payload):
+            if session.username == "alice" and payload.get("type") == "welcome":
+                welcome_blocked.set()
+                if not release_welcome.wait(timeout=3):
+                    raise TimeoutError("test did not release Alice's welcome")
+            if session.username == "alice":
+                with send_types_lock:
+                    send_types.append(str(payload.get("type")))
+            original_send(session, payload)
+
+        self.server._connections.send = controlled_send
+        alice_results: list[TestPeer] = []
+        alice_errors: list[BaseException] = []
+
+        def connect_alice():
+            try:
+                certificate, key = self.credentials.clients["alice"]
+                alice_results.append(
+                    TestPeer.connect(
+                        username="alice",
+                        host="127.0.0.1",
+                        port=self.port,
+                        room="general",
+                        ca_file=self.credentials.ca_certificate,
+                        certificate_file=certificate,
+                        key_file=key,
+                    )
+                )
+            except BaseException as exc:
+                alice_errors.append(exc)
+
+        alice_thread = threading.Thread(target=connect_alice)
+        alice_thread.start()
+        self.assertTrue(welcome_blocked.wait(timeout=3))
+        try:
+            bob = self.connect_peer("bob", "general")
+        finally:
+            release_welcome.set()
+        alice_thread.join(timeout=3)
+
+        self.assertFalse(alice_thread.is_alive())
+        self.assertEqual(alice_errors, [])
+        self.assertEqual(len(alice_results), 1)
+        alice = alice_results[0]
+        self.peers.append(alice)
+        self.assertEqual(alice.welcome.get("type"), "welcome")
+        self.assertTrue(send_types)
+        self.assertEqual(send_types[0], "welcome")
+        self.assertEqual(alice.receive_type("peer_joined").get("peer", {}).get("username"), "bob")
+        self.assertEqual(bob.receive_type("peer_joined").get("peer", {}).get("username"), "alice")
+
+    def test_failed_active_send_and_delayed_cleanup_preserve_reconnected_session(self):
+        alice = self.connect_peer("alice", "general")
+        old_bob = self.connect_peer("bob", "general")
+        old_session = self.server._connections.get("bob")
+        self.assertIsNotNone(old_session)
+
+        delayed_cleanup_seen = threading.Event()
+        cleanup_calls = 0
+        original_disconnect = self.server._disconnect
+
+        def tracked_disconnect(session):
+            nonlocal cleanup_calls
+            if session is old_session:
+                cleanup_calls += 1
+                if cleanup_calls >= 2:
+                    delayed_cleanup_seen.set()
+            original_disconnect(session)
+
+        self.server._disconnect = tracked_disconnect
+        old_session.socket = FailingSocket()
+        self.server._safe_send(old_session, {"type": "test_failure"})
+        self.assertIsNone(self.server._connections.get("bob"))
+        self.assertNotIn("bob", self.server._rooms.members("general"))
+        left = alice.receive_type("peer_left")
+        self.assertEqual(left.get("public_key"), base64.b64encode(old_session.public_key).decode("ascii"))
+
+        bob_certificate, bob_key = self.credentials.clients["bob"]
+        new_bob = TestPeer.connect(
+            username="bob",
+            host="127.0.0.1",
+            port=self.port,
+            room="general",
+            ca_file=self.credentials.ca_certificate,
+            certificate_file=bob_certificate,
+            key_file=bob_key,
+        )
+        self.peers.append(new_bob)
+        new_session = self.server._connections.get("bob")
+        self.assertIsNotNone(new_session)
+        old_bob.close()
+        self.assertTrue(delayed_cleanup_seen.wait(timeout=3))
+        self.assertIs(self.server._connections.get("bob"), new_session)
 
     def test_failed_welcome_send_removes_new_client_from_all_server_state(self):
         certificate_file, key_file = self.credentials.clients["alice"]

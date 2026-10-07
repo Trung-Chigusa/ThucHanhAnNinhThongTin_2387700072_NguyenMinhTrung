@@ -129,7 +129,7 @@ class SecureChatServer:
 
     def _handle_connection(self, raw_connection: socket.socket) -> None:
         connection: ssl.SSLSocket | None = None
-        username: str | None = None
+        session: ClientSession | None = None
         try:
             connection = self._tls_context.wrap_socket(raw_connection, server_side=True)
             self._replace_tracked_socket(raw_connection, connection)
@@ -146,15 +146,15 @@ class SecureChatServer:
                     return
                 for message in decoder.feed(chunk):
                     if not registered:
-                        username = self._register_client(connection, certificate_der, message)
+                        session = self._register_client(connection, certificate_der, message)
                         registered = True
-                    elif not self._handle_message(username, message):
+                    elif session is None or not self._handle_message(session, message):
                         return
         except (OSError, ssl.SSLError, ProtocolError, CryptoError, ValueError, TypeError, KeyError, binascii.Error):
             return
         finally:
-            if username is not None:
-                self._disconnect(username)
+            if session is not None:
+                self._disconnect(session)
             target = connection if connection is not None else raw_connection
             self._untrack_socket(target)
             self._untrack_socket(raw_connection)
@@ -168,7 +168,7 @@ class SecureChatServer:
         connection: ssl.SSLSocket,
         certificate_der: bytes,
         announcement: dict[str, object],
-    ) -> str:
+    ) -> ClientSession:
         identity = verify_key_announcement(announcement, self._ca_certificate, str(announcement.get("room", "")))
         try:
             announced_certificate = base64.b64decode(announcement["certificate"], validate=True)
@@ -185,11 +185,12 @@ class SecureChatServer:
             public_key=identity.public_key,
         )
         with self._state_lock:
-            existing_peers = [
-                self._announcements[name]
-                for name in self._rooms.members(identity.room)
-                if name in self._announcements
-            ]
+            existing_peers = []
+            for name in self._rooms.members(identity.room):
+                peer_session = self._connections.get(name)
+                peer_announcement = self._announcements.get(name)
+                if peer_session is not None and peer_session.ready and peer_announcement is not None:
+                    existing_peers.append(peer_announcement)
             self._connections.register(session)
             self._rooms.join(identity.room, identity.username)
             self._announcements[identity.username] = announcement
@@ -205,22 +206,62 @@ class SecureChatServer:
                 },
             )
         except (OSError, KeyError, ProtocolError, ValueError):
-            self._disconnect(identity.username)
+            self._disconnect(session)
             raise
+
+        with self._state_lock:
+            if self._connections.get(identity.username) is not session:
+                raise OSError("client disconnected before registration completed")
+            session.ready = True
+            active_peers: list[tuple[ClientSession, dict[str, object]]] = []
+            for name in self._rooms.members(identity.room):
+                peer_session = self._connections.get(name)
+                peer_announcement = self._announcements.get(name)
+                if (
+                    name != identity.username
+                    and peer_session is not None
+                    and peer_session.ready
+                    and peer_announcement is not None
+                ):
+                    active_peers.append((peer_session, peer_announcement))
+
+            welcomed_generations = {peer.get("public_key") for peer in existing_peers}
+            active_generations = {peer.get("public_key") for _, peer in active_peers}
+            stale_welcome_peers = [
+                peer for peer in existing_peers if peer.get("public_key") not in active_generations
+            ]
+            newly_ready_peers = [
+                peer for _, peer in active_peers if peer.get("public_key") not in welcomed_generations
+            ]
+
+        for peer in stale_welcome_peers:
+            self._safe_send(
+                session,
+                {
+                    "type": "peer_left",
+                    "username": peer.get("username"),
+                    "public_key": peer.get("public_key"),
+                },
+            )
+            if self._connections.get(identity.username) is not session:
+                return session
+        for peer in newly_ready_peers:
+            self._safe_send(session, {"type": "peer_joined", "peer": peer})
+            if self._connections.get(identity.username) is not session:
+                return session
         self._broadcast(
             identity.room,
             {"type": "peer_joined", "peer": announcement},
             exclude=identity.username,
         )
-        return identity.username
+        return session
 
-    def _handle_message(self, username: str, message: dict[str, object]) -> bool:
-        session = self._connections.get(username)
-        if session is None:
+    def _handle_message(self, session: ClientSession, message: dict[str, object]) -> bool:
+        if self._connections.get(session.username) is not session:
             return False
         message_type = message.get("type")
         if message_type == "leave" and set(message) == {"type"}:
-            self._disconnect(username)
+            self._disconnect(session)
             return False
         if message_type != "chat":
             self._send_error(session, "unsupported_message")
@@ -275,7 +316,7 @@ class SecureChatServer:
         try:
             self._connections.send(session, payload)
         except (OSError, KeyError, ProtocolError, ValueError):
-            self._disconnect(session.username)
+            self._disconnect(session)
 
     def _broadcast(self, room: str, payload: dict[str, object], *, exclude: str | None = None) -> None:
         with self._state_lock:
@@ -285,16 +326,18 @@ class SecureChatServer:
                 if username != exclude
             ]
         for session in recipients:
-            if session is not None:
+            if session is not None and session.ready:
                 self._safe_send(session, payload)
 
-    def _disconnect(self, username: str) -> None:
+    def _disconnect(self, expected_session: ClientSession) -> None:
         with self._state_lock:
-            session = self._connections.remove(username)
+            session = self._connections.remove_if_current(expected_session)
             if session is None:
                 return
-            rooms = self._rooms.remove_client(username)
-            self._announcements.pop(username, None)
+            rooms = self._rooms.remove_client(session.username)
+            self._announcements.pop(session.username, None)
+            was_ready = session.ready
+            session.ready = False
         try:
             session.socket.shutdown(socket.SHUT_RDWR)
         except OSError:
@@ -303,8 +346,14 @@ class SecureChatServer:
             session.socket.close()
         except OSError:
             pass
-        for room in rooms:
-            self._broadcast(room, {"type": "peer_left", "username": username})
+        if was_ready:
+            peer_left = {
+                "type": "peer_left",
+                "username": session.username,
+                "public_key": base64.b64encode(session.public_key).decode("ascii"),
+            }
+            for room in rooms:
+                self._broadcast(room, peer_left)
 
 
 def _default_cert_path(filename: str) -> str:
