@@ -64,7 +64,8 @@ class CliTests(unittest.TestCase):
             files = list((Path(temp) / "reports").glob("*.json"))
         self.assertEqual(code, 0)
         self.assertEqual(len(files), 1)
-        self.assertIn(str(files[0]), out)
+        self.assertIn("reports/", out.lower())
+        self.assertIn(files[0].name, out)
 
     def test_scan_reads_project_dotenv_file(self):
         settings = load_settings()

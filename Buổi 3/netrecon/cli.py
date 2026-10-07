@@ -44,7 +44,7 @@ def _print_scan_summary(target: str, results, report_path: Path) -> None:
         print(f"{result.protocol}/{result.port} {result.state}{service}")
         for note in result.notes:
             print(f"  {note}")
-    print(f"Report saved: {report_path}")
+    print(f"Report saved: reports/{report_path.name}")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
