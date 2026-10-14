@@ -1,0 +1,3 @@
+JWT local lifecycle demo: PASS
+protected_access=accepted; missing_bearer=rejected
+refresh_rotation=issued; replay=revoked

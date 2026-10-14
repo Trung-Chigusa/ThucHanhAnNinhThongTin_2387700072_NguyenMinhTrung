@@ -1,0 +1,42 @@
+{
+  "target": "http://127.0.0.1:5001/",
+  "created_at_utc": "2026-10-14T06:40:33.081548Z",
+  "findings": [
+    {
+      "type": "XSS",
+      "location": "query:q",
+      "evidence": "A harmless custom-element marker was reflected without HTML encoding.",
+      "confidence": "candidate",
+      "risk": "Medium",
+      "remediation": "Encode untrusted output for its HTML context and use safe template rendering."
+    },
+    {
+      "type": "SQLi",
+      "location": "query:id",
+      "evidence": "A query value matches a common SQL injection pattern; no SQL was executed.",
+      "confidence": "heuristic",
+      "risk": "High",
+      "remediation": "Use parameterized queries and validate values at the application boundary."
+    },
+    {
+      "type": "CSRF",
+      "location": "form:1",
+      "evidence": "A state-changing form has no recognized non-empty hidden CSRF token.",
+      "confidence": "manual-review",
+      "risk": "Medium",
+      "remediation": "Use a per-session CSRF token and validate it on state-changing requests."
+    },
+    {
+      "type": "SSRF",
+      "location": "query:url",
+      "evidence": "Parameter value contains a link-local address indicator; no request was made.",
+      "confidence": "heuristic",
+      "risk": "High",
+      "remediation": "Resolve and validate destinations against an explicit server-side allowlist before fetching."
+    }
+  ],
+  "limitations": [
+    "Findings are heuristic candidates for manual verification, not proof of exploitability.",
+    "The scanner targets loopback only and does not execute payloads or make SSRF requests."
+  ]
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kết quả quét - Lab 04</title>
+  <style>
+    :root { font-family: Segoe UI, Arial, sans-serif; background: #f3f6fb; color: #182230; }
+    body { max-width: 960px; margin: 36px auto; padding: 0 20px; }
+    main { background: #fff; border: 1px solid #dce3ec; border-radius: 14px; padding: 28px; }
+    h1 { margin-top: 0; color: #173b6c; }
+    .summary { color: #46566b; overflow-wrap: anywhere; }
+    .finding { border: 1px solid #dce3ec; border-left: 5px solid #bc7a19; border-radius: 8px; padding: 16px; margin: 14px 0; }
+    .finding h2 { margin: 0 0 8px; font-size: 1.15rem; }
+    dt { font-weight: 700; margin-top: 8px; }
+    dd { margin: 3px 0 0 0; line-height: 1.5; overflow-wrap: anywhere; }
+    .empty { padding: 16px; background: #eef8f1; border-radius: 8px; }
+    .limitations { color: #46566b; font-size: .92rem; }
+    a { color: #1556a3; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Báo cáo kiểm thử cục bộ</h1>
+  <p class="summary"><strong>Mục tiêu:</strong> {{ report.target }}</p>
+  <p class="summary"><strong>Thời điểm UTC:</strong> {{ report.created_at_utc }}</p>
+  {% if report.findings %}
+    {% for finding in report.findings %}
+    <article class="finding">
+      <h2>{{ finding.type }} · Mức độ {{ finding.risk }}</h2>
+      <dl>
+        <dt>Vị trí</dt><dd>{{ finding.location }}</dd>
+        <dt>Dấu hiệu</dt><dd>{{ finding.evidence }}</dd>
+        <dt>Độ tin cậy</dt><dd>{{ finding.confidence }}</dd>
+        <dt>Khuyến nghị</dt><dd>{{ finding.remediation }}</dd>
+      </dl>
+    </article>
+    {% endfor %}
+  {% else %}
+    <p class="empty">Không có dấu hiệu phù hợp với các kiểm tra đã chọn.</p>
+  {% endif %}
+  <h2>Giới hạn kết quả</h2>
+  <ul class="limitations">{% for item in report.limitations %}<li>{{ item }}</li>{% endfor %}</ul>
+  <p><a href="/">Quay lại trang kiểm thử</a></p>
+</main>
+</body>
+</html>

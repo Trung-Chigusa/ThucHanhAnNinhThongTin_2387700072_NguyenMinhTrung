@@ -1,0 +1,37 @@
+test_cli_outputs_json_for_local_demo (test_cli.CLITests.test_cli_outputs_json_for_local_demo) ... ok
+test_cli_rejects_public_target_before_scan (test_cli.CLITests.test_cli_rejects_public_target_before_scan) ... ok
+test_csrf_accepts_case_insensitive_hidden_token (test_csrf.CSRFDetectorTests.test_csrf_accepts_case_insensitive_hidden_token) ... ok
+test_csrf_flags_form_without_token (test_csrf.CSRFDetectorTests.test_csrf_flags_form_without_token) ... ok
+test_csrf_handles_empty_and_malformed_html (test_csrf.CSRFDetectorTests.test_csrf_handles_empty_and_malformed_html) ... ok
+test_form_route_uses_only_local_demo_html (test_demo_target.DemoTargetTests.test_form_route_uses_only_local_demo_html) ... ok
+test_lookup_and_inspect_do_not_execute_sql_or_fetch_urls (test_demo_target.DemoTargetTests.test_lookup_and_inspect_do_not_execute_sql_or_fetch_urls) ... ok
+test_search_reflects_harmless_marker_and_has_unprotected_form (test_demo_target.DemoTargetTests.test_search_reflects_harmless_marker_and_has_unprotected_form) ... ok
+test_report_has_confidence_risk_and_remediation (test_report.ReportGeneratorTests.test_report_has_confidence_risk_and_remediation) ... ok
+test_report_omits_sensitive_target_path_segments (test_report.ReportGeneratorTests.test_report_omits_sensitive_target_path_segments) ... ok
+test_report_omits_target_query_values (test_report.ReportGeneratorTests.test_report_omits_target_query_values) ... ok
+test_sql_detector_makes_no_request (test_sql_injection.SQLInjectionTests.test_sql_detector_makes_no_request) ... ok
+test_sql_flags_only_known_patterns (test_sql_injection.SQLInjectionTests.test_sql_flags_only_known_patterns) ... ok
+test_ssrf_flags_local_address_parameter (test_ssrf.SSRFTesterTests.test_ssrf_flags_local_address_parameter) ... ok
+test_ssrf_makes_no_request (test_ssrf.SSRFTesterTests.test_ssrf_makes_no_request) ... ok
+test_accepts_loopback_ipv4_and_localhost (test_target_scope.TargetScopeTests.test_accepts_loopback_ipv4_and_localhost) ... ok
+test_pins_localhost_to_resolved_loopback_address (test_target_scope.TargetScopeTests.test_pins_localhost_to_resolved_loopback_address) ... ok
+test_rejects_credentials_and_fragments (test_target_scope.TargetScopeTests.test_rejects_credentials_and_fragments) ... ok
+test_rejects_hostname_with_any_non_loopback_answer (test_target_scope.TargetScopeTests.test_rejects_hostname_with_any_non_loopback_answer) ... ok
+test_rejects_invalid_scheme_and_url (test_target_scope.TargetScopeTests.test_rejects_invalid_scheme_and_url) ... ok
+test_rejects_public_ipv4_and_ipv6 (test_target_scope.TargetScopeTests.test_rejects_public_ipv4_and_ipv6) ... ok
+test_resolution_failure_fails_closed (test_target_scope.TargetScopeTests.test_resolution_failure_fails_closed) ... ok
+test_ui_displays_candidate_and_remediation_safely (test_ui.UITests.test_ui_displays_candidate_and_remediation_safely) ... ok
+test_ui_handles_scanner_error_without_traceback (test_ui.UITests.test_ui_handles_scanner_error_without_traceback) ... ok
+test_ui_home_loads (test_ui.UITests.test_ui_home_loads) ... ok
+test_ui_rejects_public_target (test_ui.UITests.test_ui_rejects_public_target) ... ok
+test_ui_rejects_unknown_check (test_ui.UITests.test_ui_rejects_unknown_check) ... ok
+test_local_http_client_ignores_proxy_environment (test_xss.XSSScannerTests.test_local_http_client_ignores_proxy_environment) ... ok
+test_xss_does_not_follow_redirects (test_xss.XSSScannerTests.test_xss_does_not_follow_redirects) ... ok
+test_xss_ignores_html_encoded_marker (test_xss.XSSScannerTests.test_xss_ignores_html_encoded_marker) ... ok
+test_xss_preserves_existing_query_parameters (test_xss.XSSScannerTests.test_xss_preserves_existing_query_parameters) ... ok
+test_xss_reports_raw_marker_reflection (test_xss.XSSScannerTests.test_xss_reports_raw_marker_reflection) ... ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 0.286s
+
+OK

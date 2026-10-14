@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web Vulnerability Scanner - Lab 04</title>
+  <style>
+    :root { color-scheme: light; font-family: Segoe UI, Arial, sans-serif; background: #f3f6fb; color: #182230; }
+    body { max-width: 900px; margin: 36px auto; padding: 0 20px; }
+    main { background: #fff; border: 1px solid #dce3ec; border-radius: 14px; padding: 28px; box-shadow: 0 8px 26px #12243a12; }
+    h1 { margin-top: 0; color: #173b6c; }
+    p { line-height: 1.55; }
+    label, legend { font-weight: 600; }
+    input[type=url] { box-sizing: border-box; width: 100%; padding: 12px; margin: 8px 0 18px; border: 1px solid #afbdce; border-radius: 7px; }
+    fieldset { border: 1px solid #dce3ec; border-radius: 8px; padding: 14px; }
+    .checks { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 12px; }
+    button { margin-top: 18px; width: 100%; border: 0; border-radius: 8px; padding: 12px; color: white; background: #1556a3; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .note { color: #46566b; }
+    .error { padding: 12px; background: #fff0ef; border-left: 4px solid #c43a32; border-radius: 5px; }
+    code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Web Vulnerability Scanner</h1>
+  <p class="note">Lab 04 · Bản demo chỉ chấp nhận mục tiêu loopback. Kết quả là dấu hiệu cần xác minh thủ công.</p>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <form action="/scan" method="post">
+    <label for="target">URL cần kiểm thử</label>
+    <input id="target" name="target" type="url" required value="{{ target or 'http://127.0.0.1:5001/search?id=1%27+OR+1%3D1&url=http%3A%2F%2F169.254.169.254%2Flatest' }}">
+    <fieldset>
+      <legend>Chọn công cụ kiểm thử</legend>
+      <div class="checks">
+        <label><input type="checkbox" name="checks" value="xss" checked> XSS Scanner</label>
+        <label><input type="checkbox" name="checks" value="sql" checked> SQL Injection Tester</label>
+        <label><input type="checkbox" name="checks" value="csrf" checked> CSRF Detector</label>
+        <label><input type="checkbox" name="checks" value="ssrf" checked> SSRF Tester</label>
+      </div>
+    </fieldset>
+    <button type="submit">Bắt đầu kiểm thử cục bộ</button>
+  </form>
+</main>
+</body>
+</html>
