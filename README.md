@@ -7,5 +7,6 @@ Repository lưu bài thực hành môn Lập trình An ninh thông tin, tổ ch�
 | Buổi | Nội dung | Link |
 |---|---|---|
 | Buổi 1 | Cơ sở lập trình bảo mật, kiểm tra đầu vào (SecureValidator, Git pre-commit hook, SecureLogger) | [Buổi 1](Buổi%201) |
+| Buổi 4 | Công cụ kiểm thử bảo mật web và quản lý JWT | [Buổi 4](Buổi%204) |
 
 Mỗi buổi gồm nhiều lab (`Lab01`, `Lab02`, ...), mỗi lab có file `README.md` mô tả mục tiêu, hướng dẫn cài đặt/chạy và kết quả kiểm thử — đây là nội dung dùng để chấm điểm.
