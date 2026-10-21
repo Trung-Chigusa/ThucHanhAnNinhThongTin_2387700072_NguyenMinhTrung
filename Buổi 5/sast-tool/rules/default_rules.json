@@ -1,0 +1,13 @@
+[
+  {"id": "PY-EVAL", "type": "Use of eval", "severity": "high"},
+  {"id": "PY-EXEC", "type": "Use of exec", "severity": "high"},
+  {"id": "PY-DYNAMIC-CODE", "type": "Dynamic code execution", "severity": "high"},
+  {"id": "PY-UNSAFE-DESERIALIZATION", "type": "Unsafe deserialization", "severity": "high"},
+  {"id": "PY-COMMAND", "type": "Shell command execution", "severity": "high"},
+  {"id": "PY-HARDCODED-CREDENTIAL", "type": "Hardcoded credential", "severity": "medium", "pattern": "(?:password|secret|api[_-]?key|demo_credential)\\s*=\\s*['\\\"][^'\\\"]+['\\\"]", "message": "A credential-like value is assigned directly in source."},
+  {"id": "PY-PICKLE-IMPORT", "type": "Pattern Match", "severity": "medium", "pattern": "\\bimport\\s+pickle\\b", "message": "Review pickle use; never load untrusted serialized data."},
+  {"id": "PY-LINT", "type": "Lint Issue", "severity": "low"},
+  {"id": "PY-COMPLEXITY", "type": "High complexity", "severity": "medium"},
+  {"id": "PY-FUNCTION-LENGTH", "type": "Long function", "severity": "low"},
+  {"id": "PY-NESTING", "type": "Deep nesting", "severity": "low"}
+]

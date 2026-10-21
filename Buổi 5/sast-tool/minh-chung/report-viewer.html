@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SAST — Báo cáo minh chứng</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", sans-serif; background: #101722; color: #e8eef7; }
+    body { max-width: 980px; margin: 40px auto; padding: 0 24px; }
+    header, .finding { background: #182333; border: 1px solid #2a3c54; border-radius: 12px; padding: 20px 24px; margin-bottom: 14px; }
+    h1 { margin: 0 0 8px; font-size: 26px; } p { color: #aebdd0; margin: 6px 0; }
+    .stats { display: flex; gap: 12px; margin: 18px 0 22px; }
+    .stat { flex: 1; background: #182333; border: 1px solid #2a3c54; border-radius: 12px; padding: 15px; }
+    .stat strong { display: block; font-size: 23px; }
+    .finding { display: grid; grid-template-columns: 1fr auto; gap: 8px 18px; }
+    .finding h2 { font-size: 17px; margin: 0; } .finding p { grid-column: 1 / -1; }
+    .badge { align-self: start; border-radius: 20px; padding: 4px 10px; background: #5d2430; color: #ffd8dd; font-size: 12px; }
+    code { color: #9bd4ff; } footer { margin-top: 22px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SAST — Kết quả phân tích mã Python</h1>
+    <p id="status">Đang đọc báo cáo SARIF 2.1.0…</p>
+    <p>Mẫu kiểm chứng: <code>examples/vulnerable_01.py</code></p>
+  </header>
+  <section class="stats" id="stats"></section>
+  <main id="findings"></main>
+  <footer>Đây là đầu ra của bộ rule minh họa trong Lab 05; cần review thủ công trước khi kết luận.</footer>
+  <script>
+    fetch('sast-vulnerable-01.sarif').then(r => r.json()).then(report => {
+      const run = report.runs[0];
+      const findings = run.results || [];
+      document.querySelector('#status').textContent = `SARIF ${report.version} · ${run.tool.driver.name} ${run.tool.driver.version}`;
+      document.querySelector('#stats').innerHTML = `<div class="stat"><strong>${findings.length}</strong>phát hiện</div><div class="stat"><strong>${new Set(findings.map(f => f.ruleId)).size}</strong>rule khớp</div><div class="stat"><strong>${findings.filter(f => f.level === 'error').length}</strong>mức error</div>`;
+      document.querySelector('#findings').innerHTML = findings.map(f => {
+        const loc = f.locations?.[0]?.physicalLocation;
+        const line = loc?.region?.startLine ?? '?';
+        const file = loc?.artifactLocation?.uri ?? 'unknown';
+        return `<article class="finding"><h2>${f.ruleId}</h2><span class="badge">${f.level}</span><p>${f.message.text} · <code>${file}:${line}</code></p></article>`;
+      }).join('');
+    }).catch(() => { document.querySelector('#status').textContent = 'Không đọc được file SARIF.'; });
+  </script>
+</body>
+</html>
